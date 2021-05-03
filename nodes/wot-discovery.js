@@ -5,6 +5,8 @@ module.exports = function (RED) {
     var mdns = require("multicast-dns");
     var mqtt = require('mqtt');
 
+    const mqttDiscoveryTopic = "wot/td/#";
+
     function WoTDiscoveryNode(config) {
         RED.nodes.createNode(this, config);
         var node = this;
@@ -15,6 +17,10 @@ module.exports = function (RED) {
         var tdMsgProperty = config.msgProperty || "thingDescription";
         var msgOrContext = config.msgOrContext;
         var deleteExistingTDs = config.deleteExistingTDs || true;
+        
+        let useMqttDiscovery = config.useMqtt || false;
+        let mqttBrokerAddress = config.mqttBrokerAddress;
+        var mqttClient;
 
         var timeouts = {};
 
@@ -41,7 +47,34 @@ module.exports = function (RED) {
                     _sendCoapDiscovery(address);
                 });
             }
+
+            if (useMqttDiscovery) {
+                _performMqttDiscovery();
+            }
         });
+
+        function _performMqttDiscovery() {
+            if (client) {
+                client.end();
+            }
+
+            if (mqttBrokerAddress) {
+                client = mqtt.connect(mqttBrokerAddress);
+            } else {
+                node.error("No MQTT broker address defined!");
+                return;
+            }
+
+            client.on('message', function (topic, message) {
+                if (topic == mqttDiscoveryTopic) {
+                    _processThingDescriptionJSON(message.toString());
+                }
+            });
+
+            client.on('connect', function () {
+                client.subscribe(mqttDiscoveryTopic);
+            });
+        }
 
         function _processThingDescriptionJSON(thingDescriptionJSON) {
             try {
