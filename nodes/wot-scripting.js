@@ -185,16 +185,18 @@ module.exports = function (RED) {
 
         function _handleOutput(msg, output, outputVar, outputVarType) {
             if (output) {
-                if (outputVarType === "msg") {
-                    msg[outputVar] = output;
-                } else if (outputVarType === "flow") {
-                    node.context().flow.set(outputVar, output);
-                    console.log(`Putting ${output} into ${outputVar} of ${outputVarType}`);
-                } else if (outputVarType === "global") {
-                    node.context().global.set(outputVar, output);
-                    console.log(`Putting ${output} into ${outputVar} of ${outputVarType}`);
-                } else {
-                    throw Error("Invalid output context given! Possible values are msg, flow or global!");
+                switch (outputVarType) {
+                    case "msg":
+                        msg[outputVar] = output;
+                        break;
+                    case "flow":
+                        node.context().flow.set(outputVar, output);
+                        break;
+                    case "global":
+                        node.context().global.set(outputVar, output);
+                        break;
+                    default:
+                        throw Error("Invalid output context given! Possible values are msg, flow or global!");
                 }
             }
             node.send(msg);
